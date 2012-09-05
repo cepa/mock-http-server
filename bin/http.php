@@ -197,7 +197,9 @@ class HttpRequest
 class HttpResponse
 {
     
-    protected $_statusLine = 'HTTP/1.1 200 OK';
+    protected $_httpProto = 'HTTP/1.1';
+    protected $_statusCode = 200;
+    protected $_statusMessage = 'OK';
     protected $_headers = array();
     protected $_body;
     
@@ -206,15 +208,26 @@ class HttpResponse
         
     }
     
-    public function setStatusLine($statusLine)
+    public function setStatusCode($code)
     {
-        $this->_statusLine = $statusLine;
+        $this->_statusCode = $code;
         return $this;
     }
     
-    public function getStatusLine()
+    public function getStatusCode()
     {
-        return $this->_statusLine;
+        return $this->_statusCode;
+    }
+    
+    public function setStatusMessage($message)
+    {
+        $this->_statusMessage = $message;
+        return $this;
+    }
+    
+    public function getStatusMessage()
+    {
+        return $this->_statusMessage;
     }
     
     public function setHeader($name, $value)
@@ -241,7 +254,7 @@ class HttpResponse
     
     public function render()
     {
-        $output = $this->getStatusLine()."\r\n";
+        $output = $this->_httpProto.' '.$this->getStatusCode().' '.$this->getStatusMessage()."\r\n";
         foreach ($this->_headers as $name => $value) {
             $output .= "{$name}: {$value}\r\n";
         }
@@ -268,6 +281,44 @@ class HttpPage extends HttpResponse
     {
         $this->setHeader('Content-Length', strlen($this->getBody()));
         return parent::render();
+    }
+    
+}
+
+class HttpPageDirectory extends HttpPage
+{
+    
+    public function __construct($uri, $path)
+    {
+        $files = $this->listDirectory($path);
+        $body = '<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">';
+        $body .= "<html><head></head><body>\n";
+        
+        if (trim($uri, '/') != '') {
+            $fileUri = '/'.trim(dirname($uri), '/');
+            $body .= '<a href="'.$fileUri.'">..</a><br />'."\n";
+        }
+        
+        foreach ($files as $file) {
+            $fileUri = rtrim($uri, '/').'/'.$file;
+            $body .= '<a href="'.$fileUri.'">'.$file.'</a><br />'."\n";
+        }
+        
+        $body .= '</body></html>';
+        parent::__construct($body);
+    }
+    
+    public function listDirectory($path)
+    {
+        $files = array();
+        $handle = opendir($path);
+        while (($file = readdir($handle)) !== false) {
+            if ($file != '.' && $file != '..') {
+                $files[] = $file;
+            }
+        } 
+        closedir($path);
+        return $files;
     }
     
 }
@@ -303,7 +354,7 @@ class HttpServer
     
     public function setWebDir($dir)
     {
-        $this->_webDir = $dir;
+        $this->_webDir = rtrim($dir, '/');
         return $this;
     }
     
@@ -330,10 +381,31 @@ class HttpServer
             if ($clientSocket) {
                 $request = new HttpRequest($clientSocket->read(8192));
                 
-                Debug::log($clientSocket->getRemoteAddress().': "'.$request->getMethod().' '.$request->getUri().'"');
+                $path = $this->getWebDir().'/'.$request->getUri();
+                if (file_exists($path)) {
+                    if (is_file($path)) {
+                        $contents = @file_get_contents($path);
+                        $response = new HttpPage($contents);
+                    } else {
+                        $response = new HttpPageDirectory($request->getUri(), $path);
+                    }
+                } else {
+                    $response = new HttpPage('Error 404');
+                    $response
+                        ->setStatusCode('404')
+                        ->setStatusMessage('Not Found');
+                }
+
+                $render = $response->render();
+                Debug::log(
+                    $clientSocket->getRemoteAddress().
+                    ': "'.$request->getMethod().
+                    ' '.$request->getUri().
+                    '" '.$response->getStatusCode().
+                    ' '.$response->getHeader('Content-Length').
+                    ' "'.$request->getHeader('User-Agent').'"');
                 
-                $response = new HttpPage("index");
-                $clientSocket->write($response->render());
+                $clientSocket->write($render);
                 
                 $clientSocket->close();
             }
