@@ -1,0 +1,24 @@
+#!/usr/bin/env php
+<?php
+
+declare(ticks = 1);
+error_reporting(E_ALL);
+set_time_limit(0);
+ob_implicit_flush();
+
+require_once 'http.php';
+
+$server = new HttpServer();
+
+function sig_handler($signo)
+{
+	global $server;
+	$server->kill();
+}
+
+pcntl_signal(SIGTERM, 'sig_handler');
+pcntl_signal(SIGINT, 'sig_handler');
+
+$server
+    ->setWebDir(dirname(dirname(__FILE__)).'/web')
+    ->run();
