@@ -166,17 +166,23 @@ class HttpRequest
     protected $_headers = array();
     protected $_body;
     
-    public function __construct($input)
+    public function __construct($input, $skipFirstLine = false)
     {
         $headerEnd = strpos($input, "\r\n\r\n");
         $headerLines = explode("\r\n", substr($input, 0, $headerEnd));
-        list($this->_method, $this->_uri) = sscanf($headerLines[0], "%s %s");
-        for ($n = count($headerLines), $i = 1; $i < $n; $i++) {
+        
+        $i = 0;
+        if (!$skipFirstLine) {
+            list($this->_method, $this->_uri) = sscanf($headerLines[$i++], "%s %s");
+        }
+        
+        for ($n = count($headerLines); $i < $n; $i++) {
             $p = strpos($headerLines[$i], ': ');
             $name = substr($headerLines[$i], 0, $p);
             $value = substr($headerLines[$i], $p + 2);
             $this->_headers[$name] = $value;
         }
+        
         $this->_body = substr($input, $headerEnd + 4);
     }
     
@@ -198,6 +204,11 @@ class HttpRequest
     public function getHeader($name)
     {
         return (isset($this->_headers[$name]) ? $this->_headers[$name] : null);
+    }
+    
+    public function getBody()
+    {
+        return $this->_body;
     }
     
 }
@@ -334,10 +345,20 @@ class DirectoryPage extends HtmlPage
 class CgiPage extends HtmlPage
 {
     
-    public function __construct($scriptPath)
+    public function __construct(array $env = array())
     {
-        $output = shell_exec('php-cgi '.$scriptPath);
-        parent::__construct($output);
+        $envStr = '';
+        foreach ($env as $name => $value) {
+            $envStr .= $name.'="'.$value.'" ';
+        }
+        
+        $stdout = shell_exec($envStr.' php-cgi -d cgi.force_redirect=0 ');
+        
+        $cgiResponse = new HttpRequest($stdout);
+        foreach ($cgiResponse->getHeaders() as $name => $value) {
+            $this->setHeader($name, $value);
+        }
+        parent::__construct($cgiResponse->getBody());
     }
     
 }
@@ -405,7 +426,12 @@ class HttpServer
                 if (file_exists($path)) {
                     if (is_file($path)) {
                         if ($this->getFilenameExtension($path) == 'php') {
-                            $response = new CgiPage($path);
+                            $env = array(
+                                'SCRIPT_FILENAME' => $path,
+                                'REQUEST_METHOD' => $request->getMethod(),
+                                'REQUEST_URI' => $request->getUri(),
+                            );
+                            $response = new CgiPage($env);
                         } else {
                             $contents = @file_get_contents($path);
                             $response = new HtmlPage($contents);
