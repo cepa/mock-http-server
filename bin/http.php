@@ -89,6 +89,14 @@ abstract class Socket
         return $this;
     }
     
+    public function setOption($level, $optname, $optval)
+    {
+        if (socket_set_option($this->getSock(), $level, $optname, $optval) === false) {
+            throw new Exception("socket_set_option failed: ".$this->getError());
+        }
+        return $this;
+    }
+    
     public function getError()
     {
         return socket_strerror(socket_last_error($this->getSock()));
@@ -370,6 +378,7 @@ class HttpServer
         $this->_socket = new ServerSocket();
         $this->_socket
             ->create(AF_INET, SOCK_STREAM, SOL_TCP)
+            ->setOption(SOL_SOCKET, SO_REUSEADDR, 1)
             ->bind($this->getAddress(), $this->getPort())
             ->listen(10)
             ->setNonBlock();
