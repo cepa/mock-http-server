@@ -163,6 +163,7 @@ class HttpRequest
     protected $_socket;
     protected $_method;
     protected $_uri;
+    protected $_query;
     protected $_headers = array();
     protected $_body;
     
@@ -173,7 +174,14 @@ class HttpRequest
         
         $i = 0;
         if (!$skipFirstLine) {
-            list($this->_method, $this->_uri) = sscanf($headerLines[$i++], "%s %s");
+            list($this->_method, $uri) = sscanf($headerLines[$i++], "%s %s");
+            $queryPos = strpos($uri, '?');
+            if ($queryPos !== false) {
+                $this->_uri = substr($uri, 0, $queryPos);
+                $this->_query = substr($uri, $queryPos + 1);
+            } else {
+                $this->_uri = $uri;
+            }
         }
         
         for ($n = count($headerLines); $i < $n; $i++) {
@@ -194,6 +202,11 @@ class HttpRequest
     public function getUri()
     {
         return $this->_uri;
+    }
+    
+    public function getQuery()
+    {
+        return $this->_query;
     }
     
     public function getHeaders()
@@ -430,6 +443,7 @@ class HttpServer
                                 'SCRIPT_FILENAME' => $path,
                                 'REQUEST_METHOD' => $request->getMethod(),
                                 'REQUEST_URI' => $request->getUri(),
+                                'QUERY_STRING' => $request->getQuery(),
                             );
                             $response = new CgiPage($env);
                         } else {
