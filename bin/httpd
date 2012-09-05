@@ -20,6 +20,6 @@ pcntl_signal(SIGTERM, 'sig_handler');
 pcntl_signal(SIGINT, 'sig_handler');
 
 $server
-    ->setPort(1085)
+    ->setPort(1087)
     ->setWebDir(dirname(dirname(__FILE__)).'/web')
     ->run();

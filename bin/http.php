@@ -317,7 +317,7 @@ class HttpPageDirectory extends HttpPage
                 $files[] = $file;
             }
         } 
-        closedir($path);
+        closedir($handle);
         return $files;
     }
     
@@ -386,6 +386,7 @@ class HttpServer
                     if (is_file($path)) {
                         $contents = @file_get_contents($path);
                         $response = new HttpPage($contents);
+                        $response->setHeader('Content-Type', $this->getMimeType($path));
                     } else {
                         $response = new HttpPageDirectory($request->getUri(), $path);
                     }
@@ -425,6 +426,19 @@ class HttpServer
     {
         usleep(1);
         return $this;
+    }
+    
+    public function getMimeType($path)
+    {
+        $pos = strrpos($path, '.');
+        if ($pos === false)
+            return 'text/html';
+        $ext = strtolower(trim(substr($path, $pos), '.'));   
+        $mimeTypes = @include 'mimetype.php';
+        if (!is_array($mimeTypes) || !isset($mimeTypes[$ext])) {
+            return 'text/html';
+        }  
+        return $mimeTypes[$ext];
     }
     
 }
