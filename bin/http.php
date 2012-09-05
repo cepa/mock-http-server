@@ -162,9 +162,14 @@ class HttpRequest
     {
         $headerEnd = strpos($input, "\r\n\r\n");
         $headerLines = explode("\r\n", substr($input, 0, $headerEnd));
-        foreach ($headerLines as $line) {
-            Debug::log($line);
+        list($this->_method, $this->_uri) = sscanf($headerLines[0], "%s %s");
+        for ($n = count($headerLines), $i = 1; $i < $n; $i++) {
+            $p = strpos($headerLines[$i], ': ');
+            $name = substr($headerLines[$i], 0, $p);
+            $value = substr($headerLines[$i], $p + 2);
+            $this->_headers[$name] = $value;
         }
+        $this->_body = substr($input, $headerEnd + 4);
     }
     
     public function getMethod()
@@ -195,6 +200,11 @@ class HttpResponse
     protected $_statusLine = 'HTTP/1.1 200 OK';
     protected $_headers = array();
     protected $_body;
+    
+    public function __construct()
+    {
+        
+    }
     
     public function setStatusLine($statusLine)
     {
@@ -237,6 +247,27 @@ class HttpResponse
         }
         $output .= "\r\n".$this->getBody();
         return $output;
+    }
+    
+}
+
+class HttpPage extends HttpResponse
+{
+    
+    public function __construct($body = null)
+    {
+        parent::__construct();
+        $this
+            ->setHeader('Server', 'PHP Http Server')
+            ->setHeader('Connection', 'Close')
+            ->setHeader('Content-Type', 'text/html');
+        $this->setBody($body);
+    }
+    
+    public function render()
+    {
+        $this->setHeader('Content-Length', strlen($this->getBody()));
+        return parent::render();
     }
     
 }
@@ -299,14 +330,9 @@ class HttpServer
             if ($clientSocket) {
                 $request = new HttpRequest($clientSocket->read(8192));
                 
-                $response = new HttpResponse();
-                $response
-                    ->setHeader('Server', 'PHP Http Server')
-                    ->setHeader('Connection', 'Close')
-                    ->setHeader('Content-Type', 'text/html')
-                    ->setHeader('Content-Length', 3)
-                    ->setBody('xxx');
-                Debug::log($response->render());
+                Debug::log($clientSocket->getRemoteAddress().': "'.$request->getMethod().' '.$request->getUri().'"');
+                
+                $response = new HttpPage("index");
                 $clientSocket->write($response->render());
                 
                 $clientSocket->close();
@@ -320,6 +346,7 @@ class HttpServer
         Debug::log("Server stopped!");
         $this->_isKilled = true;
         $this->_socket->close();
+        usleep(500);
     }
     
     public function wait()
