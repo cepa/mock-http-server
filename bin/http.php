@@ -272,7 +272,7 @@ class HttpResponse
     
 }
 
-class HttpPage extends HttpResponse
+class HtmlPage extends HttpResponse
 {
     
     public function __construct($body = null)
@@ -293,7 +293,7 @@ class HttpPage extends HttpResponse
     
 }
 
-class HttpPageDirectory extends HttpPage
+class DirectoryPage extends HtmlPage
 {
     
     public function __construct($uri, $path)
@@ -327,6 +327,17 @@ class HttpPageDirectory extends HttpPage
         } 
         closedir($handle);
         return $files;
+    }
+    
+}
+
+class CgiPage extends HtmlPage
+{
+    
+    public function __construct($scriptPath)
+    {
+        $output = shell_exec('php-cgi '.$scriptPath);
+        parent::__construct($output);
     }
     
 }
@@ -393,14 +404,18 @@ class HttpServer
                 $path = $this->getWebDir().'/'.$request->getUri();
                 if (file_exists($path)) {
                     if (is_file($path)) {
-                        $contents = @file_get_contents($path);
-                        $response = new HttpPage($contents);
-                        $response->setHeader('Content-Type', $this->getMimeType($path));
+                        if ($this->getFilenameExtension($path) == 'php') {
+                            $response = new CgiPage($path);
+                        } else {
+                            $contents = @file_get_contents($path);
+                            $response = new HtmlPage($contents);
+                            $response->setHeader('Content-Type', $this->getMimeType($path));
+                        }
                     } else {
-                        $response = new HttpPageDirectory($request->getUri(), $path);
+                        $response = new DirectoryPage($request->getUri(), $path);
                     }
                 } else {
-                    $response = new HttpPage('Error 404');
+                    $response = new HtmlPage('Error 404');
                     $response
                         ->setStatusCode('404')
                         ->setStatusMessage('Not Found');
@@ -437,17 +452,22 @@ class HttpServer
         return $this;
     }
     
-    public function getMimeType($path)
+    public function getMimeType($filename)
     {
-        $pos = strrpos($path, '.');
-        if ($pos === false)
-            return 'text/html';
-        $ext = strtolower(trim(substr($path, $pos), '.'));   
+        $ext = $this->getFilenameExtension($filename);
         $mimeTypes = @include 'mimetype.php';
         if (!is_array($mimeTypes) || !isset($mimeTypes[$ext])) {
             return 'text/html';
         }  
         return $mimeTypes[$ext];
+    }
+    
+    public function getFilenameExtension($filename)
+    {
+        $pos = strrpos($filename, '.');
+        if ($pos === false)
+            return 'text/html';
+        return strtolower(trim(substr($filename, $pos), '.'));
     }
     
 }
