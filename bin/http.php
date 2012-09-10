@@ -429,6 +429,7 @@ class HttpServer
             ->listen(10)
             ->setNonBlock();
         
+        Debug::log("Visit http://localhost:".$this->getPort());
         Debug::log("Waiting for incoming connections...");
         
         do {
