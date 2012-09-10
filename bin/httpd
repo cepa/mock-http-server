@@ -41,5 +41,5 @@ if (isset($options['pidfile'])) {
 
 $server
     ->setPort($port)
-    ->setWebDir($webdir)
+    ->setWebDir(realpath($webdir))
     ->run();
