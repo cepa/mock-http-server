@@ -366,12 +366,13 @@ class CgiPage extends HtmlPage
         }
         
         $stdout = shell_exec($envStr.' php-cgi -d cgi.force_redirect=0 ');
-        
         $cgiResponse = new HttpRequest($stdout);
+        
+        parent::__construct($cgiResponse->getBody());
+        
         foreach ($cgiResponse->getHeaders() as $name => $value) {
             $this->setHeader($name, $value);
         }
-        parent::__construct($cgiResponse->getBody());
     }
     
 }

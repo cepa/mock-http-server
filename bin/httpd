@@ -19,7 +19,27 @@ function sig_handler($signo)
 pcntl_signal(SIGTERM, 'sig_handler');
 pcntl_signal(SIGINT, 'sig_handler');
 
+$options = getopt('', array(
+    'port:',
+    'webdir:',
+    'pidfile:'
+));
+
+$port = 1080;
+if (isset($options['port'])) {
+    $port = (int) $options['port'];
+}
+
+$webdir = dirname(dirname(__FILE__)).'/web';
+if (isset($options['webdir'])) {
+    $webdir = $options['webdir'];
+}
+
+if (isset($options['pidfile'])) {
+    @file_put_contents($options['pidfile'], getmypid());
+}
+
 $server
-    ->setPort(1080)
-    ->setWebDir(dirname(dirname(__FILE__)).'/web')
+    ->setPort($port)
+    ->setWebDir($webdir)
     ->run();
