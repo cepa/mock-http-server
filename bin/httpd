@@ -24,10 +24,10 @@ $longopts = array(
     'webdir:',
     'pidfile:'
 );
-if (strpos(phpversion(), '5.2')) {
-    $options = getopt('p:w:P:');
+if (strpos(phpversion(), '5.2.') !== false) {
+    $options = @getopt('p:w:P:');
 } else {
-    $options = getopt('p:w:P:', $longopts);
+    $options = @getopt('p:w:P:', $longopts);
 }
 
 $port = 1080;
