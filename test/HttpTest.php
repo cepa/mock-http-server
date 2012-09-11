@@ -5,7 +5,7 @@ require_once 'Mock_Http_Server.php';
 class HttpTest extends PHPUnit_Framework_TestCase
 {
 
-    public function testConnect()
+    public function testSimpleGet()
     {
         $rootPath = dirname(dirname(__FILE__));
         
@@ -15,10 +15,8 @@ class HttpTest extends PHPUnit_Framework_TestCase
             ->setWebDir($rootPath.'/web')
             ->start();
         
-        $url = $server->getBaseUrl().'/mock/json.php';
-        $json = json_decode(file_get_contents($url));
-        $this->assertEquals(123, $json->a);
-        $this->assertEquals(456, $json->b);
+        $response = file_get_contents($server->getBaseUrl().'/mock/get.php');
+        $this->assertEquals('ok', $response);
                 
         $server->stop();
     }
