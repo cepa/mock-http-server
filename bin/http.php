@@ -303,7 +303,7 @@ class HtmlPage extends HttpResponse
     {
         parent::__construct();
         $this
-            ->setHeader('Server', 'PHP Http Server')
+            ->setHeader('Server', 'Mock Http Server')
             ->setHeader('Connection', 'Close')
             ->setHeader('Content-Type', 'text/html');
         $this->setBody($body);
@@ -419,7 +419,7 @@ class HttpServer
 
     public function run()
     {
-        Debug::log("PHP HTTP Server start...");
+        Debug::log("HTTP Server start...");
 
         $this->_socket = new ServerSocket();
         $this->_socket
