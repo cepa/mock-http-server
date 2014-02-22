@@ -358,8 +358,12 @@ class DirectoryPage extends HtmlPage
 class CgiPage extends HtmlPage
 {
 
-    public function __construct(array $env = array())
+    public function __construct(array $env = array(), $content = null)
     {
+        if (isset($content)) {
+            $env['CONTENT_LENGTH'] = strlen($content);
+        }
+
         $envStr = '';
         foreach ($env as $name => $value) {
             $envStr .= $name.'="'.$value.'" ';
@@ -374,6 +378,9 @@ class CgiPage extends HtmlPage
         );
         $proc = proc_open($envStr.' php-cgi -d cgi.force_redirect=0', $desc, $pipes);
         if (is_resource($proc)) {
+            if (isset($content)) {
+                fwrite($pipes[0], $content);
+            }
             fclose($pipes[0]);
             $result = stream_get_contents($pipes[1]);
             fclose($pipes[1]);
@@ -462,7 +469,7 @@ class HttpServer
                                 'REQUEST_URI' => $request->getUri(),
                                 'QUERY_STRING' => $request->getQuery(),
                             );
-                            $response = new CgiPage($env);
+                            $response = new CgiPage($env, $request->getBody());
                         } else {
                             $contents = @file_get_contents($path);
                             $response = new HtmlPage($contents);
