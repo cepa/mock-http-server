@@ -365,8 +365,23 @@ class CgiPage extends HtmlPage
             $envStr .= $name.'="'.$value.'" ';
         }
 
-        $stdout = shell_exec($envStr.' php-cgi -d cgi.force_redirect=0 ');
-        $cgiResponse = new HttpRequest($stdout);
+        $result = '';
+
+        $desc = array(
+            0 => array('pipe', 'r'),
+            1 => array('pipe', 'w'),
+            2 => array('pipe', 'w')
+        );
+        $proc = proc_open($envStr.' php-cgi -d cgi.force_redirect=0', $desc, $pipes);
+        if (is_resource($proc)) {
+            fclose($pipes[0]);
+            $result = stream_get_contents($pipes[1]);
+            fclose($pipes[1]);
+            $result .= stream_get_contents($pipes[2]);
+            $return = proc_close($proc);
+        }
+
+        $cgiResponse = new HttpRequest($result);
 
         parent::__construct($cgiResponse->getBody());
 
