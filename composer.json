@@ -1,0 +1,11 @@
+{
+    "name": "cepa/mock-http-server",
+    "type": "library",
+    "description": "Simple HTTP server implementation for mocking real HTTP calls with PHPUnit.",
+    "license": "MIT",
+    "autoload": {
+        "files": [
+            "test/Mock_Http_Server.php"
+        ]
+    }
+}
